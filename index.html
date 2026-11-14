@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#173d55" />
+  <title>冰河地形等高線編輯器｜免費網頁工具</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">{
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    }
+  }</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo" aria-hidden="true">▥</span><div><h1>冰河地形工作室 <span>V1</span></h1><p>手繪高程線 · DEM 內插 · 3D 地形輸出</p></div></div>
+    <div class="top-actions">
+      <button id="sampleBtn" class="light">載入範例</button>
+      <button id="newBtn" class="light">建立空白</button>
+      <button id="saveBtn">儲存專案</button>
+      <button id="loadBtn" class="strong">開啟專案</button>
+      <input type="file" id="fileInput" accept=".json,application/json" hidden>
+    </div>
+  </header>
+  <main class="workspace">
+    <aside class="sidebar">
+      <section class="panel compact">
+        <div class="section-title"><span class="num">01</span><h2>繪製工具</h2></div>
+        <div class="tool-grid" role="group" aria-label="繪圖模式">
+          <button class="tool is-active" data-tool="closed" type="button"><span>◉</span>封閉等高線</button>
+          <button class="tool" data-tool="open" type="button"><span>〰</span>開放控制線</button>
+          <button class="tool" data-tool="point" type="button"><span>＋</span>高程控制點</button>
+          <button class="tool" data-tool="select" type="button"><span>↖</span>選取修改</button>
+        </div>
+        <label class="field">目前繪製高度（公尺）<input id="elevationInput" type="number" value="2200" step="50" min="-200" max="20000"></label>
+        <div class="tip">按住滑鼠左鍵／觸控筆畫線，放開後產生地形。封閉線將自動接合起點與終點；控制線可用於稜線和谷軸。</div>
+        <div class="selection" id="selectionPanel" hidden>
+          <div class="selection-heading">已選取圖徵</div>
+          <label class="field">名稱（選填）<input id="featureName" maxlength="80" placeholder="例如：角峰外圈"></label>
+          <button class="danger" id="deleteBtn">刪除此圖徵</button>
+        </div>
+        <div class="split-buttons"><button id="undoBtn">↶ 撤銷上一步</button><button id="rebuildBtn">重新計算 DEM</button></div>
+      </section>
+      <section class="panel compact">
+        <div class="section-title"><span class="num">02</span><h2>地形參數</h2></div>
+        <label class="field">左側邊界高程（公尺）<input id="westInput" type="number" value="2250" step="50"></label>
+        <label class="field">右側邊界高程（公尺）<input id="eastInput" type="number" value="600" step="50"></label>
+        <label class="field">輸出等高距（公尺）<select id="intervalInput"><option value="25">25</option><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option><option value="250">250</option><option value="500">500</option></select></label>
+        <label class="field">垂直誇大 <span id="vertText">1.6 ×</span><input id="verticalInput" type="range" min="0.5" max="5" step="0.1" value="1.6"></label>
+        <label class="check"><input id="calculatedLines" type="checkbox" checked> 顯示 DEM 計算後的等高線</label>
+        <label class="check"><input id="guidesToggle" type="checkbox" checked> 顯示手繪控制線和高程點</label>
+        <label class="check"><input id="gridToggle" type="checkbox"> 顯示坐標輔助格線</label>
+      </section>
+      <section class="panel compact">
+        <div class="section-title"><span class="num">03</span><h2>下載成果</h2></div>
+        <div class="export-grid">
+          <button id="pngBtn">A4 學生圖 PNG</button>
+          <button id="ascBtn">DEM（QGIS ASC）</button>
+          <button id="glbBtn" class="accent">3D 模型 GLB</button>
+          <button id="heightBtn">灰階高程 PNG</button>
+        </div>
+        <p class="micro">匯出完全在你的瀏覽器完成，不需登入。A4 學生圖使用 DEM 重新計算的等高線，不包含你畫圖時的輔助線。</p>
+      </section>
+    </aside>
+    <section class="mainpanels">
+      <div class="panel drawing-panel">
+        <div class="panel-head"><div><h2>① 畫出地形</h2><p>每一條線都有實際海拔；點擊控制點可修改高度</p></div><span class="head-chip">平面圖（1000 × 600）</span></div>
+        <div class="canvas-wrap"><canvas id="mapCanvas" aria-label="等高線繪圖區，使用滑鼠繪圖" tabindex="0"></canvas></div>
+        <div class="panel-footer"><span id="coordStatus">提示：先畫外層等高線，再畫內圈與山頂控制點。</span><span id="featureCount">0 個圖徵</span></div>
+      </div>
+      <div class="panel model-panel">
+        <div class="panel-head"><div><h2>② 即時觀察立體地形</h2><p>拖曳旋轉、滾輪縮放；地形與 A4 均來自同一高程網格</p></div><span class="head-chip">3D 預覽</span></div>
+        <div id="viewer" class="viewer"><div id="viewerFallback" class="viewer-fallback">正在載入 3D 引擎…<small>如果畫面沒有顯示，請確認已連上網路。</small></div></div>
+        <div class="panel-footer"><span id="heightRange">高程計算中</span><span id="buildStatus">準備中</span></div>
+      </div>
+      <section class="guide-strip">
+        <strong>教學建議</strong>　先繪製外圈低高程、再繪製內圈高高程，最後點出峰頂。若要做冰斗或冰槽，加入較低的谷底控制點與較高的坡肩控制線。這是平滑內插的教學模型，並非科學測繪重建結果。
+      </section>
+    </section>
+  </main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

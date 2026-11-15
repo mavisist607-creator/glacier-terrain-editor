@@ -1,86 +1,73 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#173d55" />
-  <title>冰河地形等高線編輯器｜免費網頁工具</title>
-  <link rel="stylesheet" href="style.css" />
-  <script type="importmap">{
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
-    }
-  }</script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>冰河地形工作室 V2｜地形積木 × 等高線</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"}}</script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand"><span class="logo" aria-hidden="true">▥</span><div><h1>冰河地形工作室 <span>V1</span></h1><p>手繪高程線 · DEM 內插 · 3D 地形輸出</p></div></div>
-    <div class="top-actions">
-      <button id="sampleBtn" class="light">載入範例</button>
-      <button id="newBtn" class="light">建立空白</button>
-      <button id="saveBtn">儲存專案</button>
-      <button id="loadBtn" class="strong">開啟專案</button>
-      <input type="file" id="fileInput" accept=".json,application/json" hidden>
+<header><div class="brand"><div class="mark">△</div><div><h1>冰河地形工作室 <span>V2</span></h1><p>先塑造地形，讓等高線自動出現｜獨立於 AR</p></div></div><div class="head-actions"><button id="btn-save" class="ghost">儲存專案</button><button id="btn-open" class="ghost">開啟專案</button><button id="btn-undo" class="ghost" title="撤銷上一步">↶ 撤銷</button></div></header>
+<main class="layout">
+<aside class="leftpanel">
+  <section class="panel"><h2>01 · 起始地形</h2>
+    <div class="stack"><button id="btn-demo" class="choice strong">載入虛構冰河教學地景</button><button id="btn-blank" class="choice">建立平坦地表</button></div>
+    <div class="subhead">真實地形案例（線上讀取 DEM）</div>
+    <div class="real-list">
+      <button class="example" data-real="aletsch"><strong>阿雷奇冰河附近</strong><small>瑞士阿爾卑斯山 · 山岳起伏</small></button>
+      <button class="example" data-real="drumlin"><strong>Clyman 鼓丘附近</strong><small>美國威斯康辛州 · 低緩丘陵</small></button>
+      <button class="example" data-real="sandur"><strong>冰島 Skeiðarársandur</strong><small>冰水沖積平原附近</small></button>
+    </div><p class="hint">案例從 Mapzen／AWS 開放高程圖磚載入，需網路。若跨網域讀取失敗，可下載原始圖磚後自行匯入。</p>
+    <button id="btn-download-tile" class="textbutton">開啟目前案例原始 Terrarium PNG</button>
+    <label class="filebutton">匯入本機 DEM（ASC / GeoTIFF / Terrarium PNG）<input type="file" id="file-dem" accept=".asc,.txt,.tif,.tiff,.png"></label>
+    <p id="source-label" class="source">來源：虛構教學地形</p>
+  </section>
+  <section class="panel"><h2>02 · 放置地形積木</h2><p class="hint">先選類型，再點左側地圖或右側 3D 模型放置。使用「選取／拖曳」移動已放好的積木。</p>
+    <div class="stamp-grid" id="stamp-grid">
+      <button data-type="horn">⛰ 角峰</button><button data-type="ridge">╱ 刃嶺</button><button data-type="cirque">◕ 冰斗</button><button data-type="valley">⌣ 冰槽谷</button>
+      <button data-type="roche">▰ 羊背石</button><button data-type="drumlin">⬭ 鼓丘</button><button data-type="esker">〰 蛇丘</button><button data-type="moraine">⌒ 端磧</button>
+      <button data-type="outwash">▱ 冰水平原</button><button data-type="dune">◡ 沙丘</button>
     </div>
-  </header>
-  <main class="workspace">
-    <aside class="sidebar">
-      <section class="panel compact">
-        <div class="section-title"><span class="num">01</span><h2>繪製工具</h2></div>
-        <div class="tool-grid" role="group" aria-label="繪圖模式">
-          <button class="tool is-active" data-tool="closed" type="button"><span>◉</span>封閉等高線</button>
-          <button class="tool" data-tool="open" type="button"><span>〰</span>開放控制線</button>
-          <button class="tool" data-tool="point" type="button"><span>＋</span>高程控制點</button>
-          <button class="tool" data-tool="select" type="button"><span>↖</span>選取修改</button>
-        </div>
-        <label class="field">目前繪製高度（公尺）<input id="elevationInput" type="number" value="2200" step="50" min="-200" max="20000"></label>
-        <div class="tip">按住滑鼠左鍵／觸控筆畫線，放開後產生地形。封閉線將自動接合起點與終點；控制線可用於稜線和谷軸。</div>
-        <div class="selection" id="selectionPanel" hidden>
-          <div class="selection-heading">已選取圖徵</div>
-          <label class="field">名稱（選填）<input id="featureName" maxlength="80" placeholder="例如：角峰外圈"></label>
-          <button class="danger" id="deleteBtn">刪除此圖徵</button>
-        </div>
-        <div class="split-buttons"><button id="undoBtn">↶ 撤銷上一步</button><button id="rebuildBtn">重新計算 DEM</button></div>
-      </section>
-      <section class="panel compact">
-        <div class="section-title"><span class="num">02</span><h2>地形參數</h2></div>
-        <label class="field">左側邊界高程（公尺）<input id="westInput" type="number" value="2250" step="50"></label>
-        <label class="field">右側邊界高程（公尺）<input id="eastInput" type="number" value="600" step="50"></label>
-        <label class="field">輸出等高距（公尺）<select id="intervalInput"><option value="25">25</option><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option><option value="250">250</option><option value="500">500</option></select></label>
-        <label class="field">垂直誇大 <span id="vertText">1.6 ×</span><input id="verticalInput" type="range" min="0.5" max="5" step="0.1" value="1.6"></label>
-        <label class="check"><input id="calculatedLines" type="checkbox" checked> 顯示 DEM 計算後的等高線</label>
-        <label class="check"><input id="guidesToggle" type="checkbox" checked> 顯示手繪控制線和高程點</label>
-        <label class="check"><input id="gridToggle" type="checkbox"> 顯示坐標輔助格線</label>
-      </section>
-      <section class="panel compact">
-        <div class="section-title"><span class="num">03</span><h2>下載成果</h2></div>
-        <div class="export-grid">
-          <button id="pngBtn">A4 學生圖 PNG</button>
-          <button id="ascBtn">DEM（QGIS ASC）</button>
-          <button id="glbBtn" class="accent">3D 模型 GLB</button>
-          <button id="heightBtn">灰階高程 PNG</button>
-        </div>
-        <p class="micro">匯出完全在你的瀏覽器完成，不需登入。A4 學生圖使用 DEM 重新計算的等高線，不包含你畫圖時的輔助線。</p>
-      </section>
-    </aside>
-    <section class="mainpanels">
-      <div class="panel drawing-panel">
-        <div class="panel-head"><div><h2>① 畫出地形</h2><p>每一條線都有實際海拔；點擊控制點可修改高度</p></div><span class="head-chip">平面圖（1000 × 600）</span></div>
-        <div class="canvas-wrap"><canvas id="mapCanvas" aria-label="等高線繪圖區，使用滑鼠繪圖" tabindex="0"></canvas></div>
-        <div class="panel-footer"><span id="coordStatus">提示：先畫外層等高線，再畫內圈與山頂控制點。</span><span id="featureCount">0 個圖徵</span></div>
-      </div>
-      <div class="panel model-panel">
-        <div class="panel-head"><div><h2>② 即時觀察立體地形</h2><p>拖曳旋轉、滾輪縮放；地形與 A4 均來自同一高程網格</p></div><span class="head-chip">3D 預覽</span></div>
-        <div id="viewer" class="viewer"><div id="viewerFallback" class="viewer-fallback">正在載入 3D 引擎…<small>如果畫面沒有顯示，請確認已連上網路。</small></div></div>
-        <div class="panel-footer"><span id="heightRange">高程計算中</span><span id="buildStatus">準備中</span></div>
-      </div>
-      <section class="guide-strip">
-        <strong>教學建議</strong>　先繪製外圈低高程、再繪製內圈高高程，最後點出峰頂。若要做冰斗或冰槽，加入較低的谷底控制點與較高的坡肩控制線。這是平滑內插的教學模型，並非科學測繪重建結果。
-      </section>
-    </section>
-  </main>
-  <div id="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="app.js"></script>
-</body>
-</html>
+    <button id="btn-select" class="choice selected">選取／拖曳</button>
+    <div class="subhead">目前積木（先選取再調整） <span id="shape-count">0</span></div><div id="shape-list" class="shape-list"></div>
+  </section>
+</aside>
+<section class="workarea">
+  <div class="viewbar"><div><strong>平面地形與等高線</strong><span> 點選放置／拖曳移動</span></div><div class="seg"><button id="map-contours" class="active">等高線</button><button id="map-elev">分層設色</button><button id="map-change">地形變化</button></div></div>
+  <div class="map-wrap"><canvas id="map" width="1000" height="620" aria-label="地形編輯地圖"></canvas><div id="map-hint">選取積木類型後，點擊地圖放置</div><div class="compass">N ↑</div></div>
+  <div class="viewbar"><div><strong>3D 地形預覽</strong><span> 拖曳旋轉 · 滾輪縮放 · 點擊放置</span></div><div class="seg"><button id="view-now" class="active">塑形後</button><button id="view-before">原始地表</button><button id="view-diff">作用差異</button></div></div>
+  <div class="three-wrap" id="three-wrap"><div id="three-placeholder">載入 3D 引擎中…（需要網路存取 Three.js）</div><div class="height-legend" id="height-legend"></div></div>
+  <div class="footnote">提示：3D 積木為地形高程變形，不是把模型物件疊在山上。侵蝕會降低高程、堆積會提高高程；等高線依變形後的實際網格重新計算。</div>
+</section>
+<aside class="rightpanel">
+  <section class="panel"><h2>03 · 編輯積木</h2><div id="no-selection" class="empty">選取一個地形積木，調整位置、長寬、影響深度與方向。</div>
+  <div id="editor" hidden>
+    <div class="selected-name" id="selected-name"></div><div id="selected-typehint" class="hint"></div>
+    <label>強度／高差 <output id="height-o"></output><input id="height" type="range" min="-600" max="800" step="10"></label>
+    <label>東西尺度 <output id="width-o"></output><input id="width" type="range" min="0.03" max="0.55" step="0.005"></label>
+    <label>南北尺度 <output id="length-o"></output><input id="length" type="range" min="0.03" max="0.65" step="0.005"></label>
+    <label>旋轉角度 <output id="angle-o"></output><input id="angle" type="range" min="-180" max="180" step="5"></label>
+    <label>邊緣柔和 <output id="soft-o"></output><input id="soft" type="range" min="0.1" max="1" step="0.05"></label>
+    <div class="row"><button id="btn-duplicate" class="choice">複製</button><button id="btn-delete" class="choice danger">刪除</button></div>
+  </div></section>
+  <section class="panel"><h2>04 · 地形與等高線設定</h2>
+    <label>整體平滑 <output id="smooth-o">2 次</output><input id="smooth" type="range" min="0" max="9" step="1" value="2"></label>
+    <label>立體垂直誇大 <output id="z-o">1.5×</output><input id="z-scale" type="range" min="0.5" max="3" step="0.1" value="1.5"></label>
+    <label>等高距（公尺）<select id="interval"><option>10</option><option>20</option><option>25</option><option>50</option><option selected>100</option><option>200</option><option>250</option><option>500</option></select></label>
+    <label class="check"><input id="contours-overlay" type="checkbox" checked> 3D 上顯示等高線</label>
+    <label class="check"><input id="show-stamps" type="checkbox" checked> 顯示編輯控制範圍</label>
+    <p id="range-info" class="hint">高程範圍：—</p>
+  </section>
+  <section class="panel"><h2>05 · 匯出成果</h2>
+    <button id="btn-a4" class="choice strong">A4 學生等高線圖 PNG</button>
+    <button id="btn-glb" class="choice">地形模型 GLB</button>
+    <button id="btn-asc" class="choice">DEM 高程 ASC（QGIS）</button>
+    <button id="btn-heights" class="choice">灰階高度圖 PNG</button>
+    <p class="hint">輸出來自相同高程網格。垂直誇大只影響 3D 顯示，不改變 DEM 與等高線高度。</p>
+  </section>
+  <section class="panel"><h2>模型用途提醒</h2><p class="hint">冰河地形的「名稱與成因」無法單由高程判定。這套工具用於示範不同侵蝕、堆積形態；真實 DEM 範例是實際地表高度，後續加入的積木則為教學模擬。</p><div id="status" role="status" aria-live="polite">編輯器準備中…</div></section>
+</aside>
+</main>
+<input type="file" id="file-project" accept=".json" hidden>
+<script type="module" src="app.js"></script>
+</body></html>
